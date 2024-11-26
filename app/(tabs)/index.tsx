@@ -9,15 +9,18 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Alert,
+  Linking,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import IconSymbol from '@/components/ui/IconSymbol';
 import ThemedView from '@/components/ThemedView';
 import ThemedText from '@/components/ThemedText';
 import { RootState, AppDispatch } from '@/store';
-import { loadLocalPhotos } from '@/store/slices/gallerySlice';
+import { loadLocalPhotos, resetGallery, deletePhotos, clearSelection, togglePhotoSelection } from '@/store/slices/gallerySlice';
 import { Photo } from '@/store/slices/gallerySlice';
 import PhotoEditor from '@/components/PhotoEditor';
+import { mediaLibrary } from '@/services/mediaLibrary';
 
 type ViewMode = 'grid' | 'list' | 'details';
 
@@ -25,45 +28,182 @@ export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const photos = useSelector((state: RootState) => state.gallery.photos);
   const loading = useSelector((state: RootState) => state.gallery.loading);
+  const hasNextPage = useSelector((state: RootState) => state.gallery.hasNextPage);
+  const selectedPhotos = useSelector((state: RootState) => state.gallery.selectedPhotos);
+  const error = useSelector((state: RootState) => state.gallery.error);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
-    loadPhotos();
+    checkPermissions();
   }, []);
 
-  const loadPhotos = async () => {
+  useEffect(() => {
+    if (error) {
+      Alert.alert(
+        'Error',
+        'Failed to load photos. Please check your permissions and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Retry',
+            onPress: () => handleRefresh()
+          }
+        ]
+      );
+    }
+  }, [error]);
+
+  const checkPermissions = async () => {
     try {
-      await dispatch(loadLocalPhotos()).unwrap();
+      console.log('Checking media library permissions...');
+      // Force request on first app launch
+      const granted = await mediaLibrary.requestPermissions(true);
+      console.log('Permission status:', granted);
+      setHasPermission(granted);
+      
+      if (granted) {
+        console.log('Permissions granted, loading photos...');
+        await dispatch(loadLocalPhotos()).unwrap();
+      } else {
+        Alert.alert(
+          'Permission Required',
+          'ThunderGallery needs access to your photos to display them in the app.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Settings',
+              onPress: () => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert('Unable to open settings', 'Please open settings manually to grant photo permissions.');
+                });
+              }
+            }
+          ]
+        );
+      }
     } catch (error) {
-      console.error('Failed to load photos:', error);
+      console.error('Error checking permissions:', error);
+      setHasPermission(false);
+      Alert.alert(
+        'Permission Error',
+        'Failed to request photo library permissions. Please check your settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Settings',
+            onPress: () => {
+              Linking.openSettings().catch(() => {
+                Alert.alert('Unable to open settings', 'Please open settings manually to grant photo permissions.');
+              });
+            }
+          }
+        ]
+      );
     }
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadPhotos();
-    setRefreshing(false);
+    if (!hasPermission) {
+      await checkPermissions();
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      await dispatch(resetGallery());
+      await dispatch(loadLocalPhotos()).unwrap();
+    } catch (error) {
+      console.error('Error refreshing photos:', error);
+      Alert.alert(
+        'Error',
+        'Failed to refresh photos. Please check your permissions and try again.',
+        [
+          { text: 'OK' },
+          { 
+            text: 'Retry',
+            onPress: () => handleRefresh()
+          }
+        ]
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const loadPhotos = async () => {
+    if (!hasPermission) {
+      console.log('No permission to load photos');
+      await checkPermissions();
+      return;
+    }
+    
+    try {
+      console.log('Loading photos...');
+      await dispatch(loadLocalPhotos()).unwrap();
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load photos. Please check your permissions and try again.',
+        [
+          { text: 'OK' },
+          { 
+            text: 'Retry',
+            onPress: () => loadPhotos()
+          }
+        ]
+      );
+    }
+  };
+
+  const handleLoadMore = async () => {
+    if (hasNextPage && !loading) {
+      await loadPhotos();
+    }
   };
 
   const handlePhotoPress = (photo: Photo) => {
     setSelectedPhoto(photo);
   };
 
+  const handlePhotoLongPress = (photo: Photo) => {
+    dispatch(togglePhotoSelection(photo.id));
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await dispatch(deletePhotos(selectedPhotos)).unwrap();
+      dispatch(clearSelection());
+    } catch (error) {
+      console.error('Failed to delete photos:', error);
+    }
+  };
+
   const renderGridItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.gridItem}
+      style={[styles.gridItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.gridImage} />
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
   const renderListItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.listItem}
+      style={[styles.listItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.listImage} />
       <View style={styles.listInfo}>
@@ -72,13 +212,20 @@ export default function HomeScreen() {
           {new Date(parseInt(item.id)).toLocaleDateString()}
         </ThemedText>
       </View>
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
   const renderDetailsItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.detailsItem}
+      style={[styles.detailsItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.detailsImage} />
       <View style={styles.detailsInfo}>
@@ -90,8 +237,39 @@ export default function HomeScreen() {
           ID: {item.id}
         </ThemedText>
       </View>
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
+
+  if (hasPermission === false) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ThemedText style={styles.messageText}>
+          Please grant access to your photo library to use ThunderGallery
+        </ThemedText>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={checkPermissions}
+        >
+          <ThemedText style={styles.buttonText}>
+            Grant Permission
+          </ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+
+  if (hasPermission === null) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
 
   if (loading) {
     return (
@@ -132,6 +310,14 @@ export default function HomeScreen() {
             <IconSymbol name="information-circle" size={20} />
           </TouchableOpacity>
         </View>
+        {selectedPhotos.length > 0 && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteSelected}
+          >
+            <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -149,6 +335,8 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
       />
 
       <Modal
@@ -170,6 +358,28 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  messageText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,
@@ -196,6 +406,14 @@ const styles = StyleSheet.create({
   },
   activeViewOption: {
     backgroundColor: '#0066ff20',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#ff0000',
+  },
+  deleteButtonText: {
+    color: '#fff',
   },
   gridItem: {
     flex: 1/3,
@@ -255,5 +473,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     marginTop: 4,
+  },
+  selectedItem: {
+    opacity: 0.8,
+  },
+  selectionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 102, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
