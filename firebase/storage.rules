@@ -1,0 +1,31 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read and write their own photos
+    match /users/{userId}/photos/{photoId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId
+                  && request.resource.size < 5 * 1024 * 1024 // 5MB max
+                  && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Allow authenticated users to read and write their albums
+    match /users/{userId}/albums/{albumId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read shared photos
+    match /shared/{photoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && resource == null; // Only allow new files
+    }
+    
+    // Allow authenticated users to read AI models
+    match /models/{modelId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admins can upload models
+    }
+  }
+}

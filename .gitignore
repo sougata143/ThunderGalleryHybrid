@@ -30,9 +30,27 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+.env.development
+.env.production
 
 # typescript
 *.tsbuildinfo
+
+# Python virtual environment
+venv/
+
+# TensorFlow model files
+*.tflite
+temp_*.tflite
+
+# IDE
+.idea/
+.vscode/
+
+# Build artifacts
+build/
+*.log
 
 app-example
