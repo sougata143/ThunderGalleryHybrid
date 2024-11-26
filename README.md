@@ -1,220 +1,93 @@
-# ThunderGallery 
+# ThunderGallery
 
-A powerful mobile photo gallery app with AI-powered editing capabilities, built with React Native and Expo.
+A powerful mobile photo gallery app built with React Native and Expo, featuring AI-powered photo editing capabilities.
 
 ## Features
 
-### Authentication
-- Google Sign-In (Android & Web)
-- Apple Sign-In (iOS)
-- Secure token management
-- Guest Mode
+- **Modern Photo Gallery**
+  - Grid, list, and details view modes
+  - Smooth image loading with thumbnails
+  - Full-screen image viewing
+  - Multi-select and batch delete
 
-### Gallery Management
-- Multiple view modes (Grid, List, Details)
-- Pull-to-refresh functionality
-- Smooth transitions and animations
-- Advanced photo organization
-- Cloud storage integration
+- **AI-Powered Photo Editing**
+  - Object Removal (using Replicate's LaMa)
+  - Style Transfer (using Replicate's SDXL)
+  - Face Detection (using Cloudinary AI)
+  - Background Replacement (using Replicate's rembg)
+  - Auto Enhancement (using Cloudinary)
 
-### Photo Editing
-- Basic editing tools:
-  - Crop
-  - Rotate
-  - Filters
-  - Adjustments
-- AI-powered features:
-  - Object removal
-  - Face detection
-  - Style transfer
-  - Auto-enhance
-  - Background replacement
-  - Smart filters
+- **Image Adjustments**
+  - Brightness
+  - Contrast
+  - Saturation
+  - More coming soon...
 
-### User Experience
-- Modern, intuitive interface
-- Dark/Light theme support
-- Responsive design
-- Haptic feedback
-- Gesture controls
-
-## Recent Updates
-
-### Media Library Improvements (Latest)
-- Enhanced permission handling system
-  - Robust permission state management
-  - Permission caching with AsyncStorage
-  - Automatic permission retries
-  - User-friendly permission prompts
-- Improved error handling
-  - Detailed error messages
-  - Automatic retry mechanisms
-  - Better user feedback
-- Performance optimizations
-  - Permission state caching
-  - Reduced permission checks
-  - Optimized photo loading
-
-### Known Issues
-- Media library permissions may require app restart on first grant
-- Photo loading may take a moment after permission grant
-- Some Android devices may require manual permission grant
-
-### Troubleshooting
-
-If you encounter permission issues:
-1. Go to your device settings
-2. Find ThunderGallery in the apps list
-3. Grant media library permissions manually
-4. Restart the app
-
-If photos don't load:
-1. Pull down to refresh the gallery
-2. Check your permissions in settings
-3. Try closing and reopening the app
+- **Advanced Features**
+  - Robust permission handling
+  - Efficient image caching
+  - Error handling and retry mechanisms
+  - Smooth animations and transitions
 
 ## Tech Stack
 
 - React Native / Expo
 - TypeScript
-- Redux Toolkit (State Management)
-- Firebase (Authentication & Storage)
-- TensorFlow.js (AI Features)
-- Expo Router (Navigation)
-- React Native Reanimated (Animations)
+- Redux Toolkit for state management
+- React Native Reanimated for animations
+- Expo MediaLibrary for photo access
+- Replicate AI and Cloudinary for AI features
 
-## Setup Instructions
+## Development Setup
 
-### Prerequisites
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-- Node.js (v16 or later)
-- Expo CLI
-- Java Development Kit (JDK) for Android development
-- Xcode for iOS development
+2. Set up environment variables:
+   Create a `.env` file with:
+   ```
+   REPLICATE_API_KEY=your_replicate_api_key
+   CLOUDINARY_CLOUD_NAME=your_cloud_name
+   CLOUDINARY_API_KEY=your_api_key
+   CLOUDINARY_API_SECRET=your_api_secret
+   ```
 
-### Installation
+3. Run the development server:
+   ```bash
+   npx expo start
+   ```
 
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/ThunderGallery.git
-cd ThunderGallery
+## Project Structure
+
+```
+app/
+├── (tabs)/              # Tab navigation screens
+├── components/          # Reusable components
+│   ├── editor/         # Photo editing components
+│   └── ui/             # UI components
+├── services/           # API and service integrations
+├── store/              # Redux store and slices
+└── utils/              # Utility functions
 ```
 
-2. Install dependencies:
-```bash
-npm install
-```
+## Recent Updates
 
-3. Create a `.env` file in the root directory with the following variables:
-```plaintext
-# Google Sign-In Configuration
-EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your-android-client-id.apps.googleusercontent.com
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-ios-client-id.apps.googleusercontent.com
-
-# AI Service Keys
-EXPO_PUBLIC_TENSORFLOW_MODEL_URL=your-model-url
-```
-
-### Google OAuth Setup
-
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select an existing one
-3. Enable the Google Sign-In API
-4. Configure the OAuth consent screen:
-   - User Type: External
-   - App Name: ThunderGallery
-   - Developer contact information: Your email
-   - Authorized domains: Add `expo.dev`
-
-5. Create OAuth 2.0 Client IDs:
-
-#### For Android
-1. Application type: Android
-2. Package name: `com.sougata143.thundergallery`
-3. Generate SHA-1 certificate fingerprint:
-```bash
-# Create android/app directory if it doesn't exist
-mkdir -p android/app
-
-# Generate debug keystore
-keytool -genkeypair -v -storetype PKCS12 \
-  -keystore android/app/debug.keystore \
-  -storepass android -alias androiddebugkey \
-  -keypass android -keyalg RSA -keysize 2048 \
-  -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
-# Get SHA-1 fingerprint
-keytool -list -v -keystore android/app/debug.keystore \
-  -alias androiddebugkey -storepass android -keypass android
-```
-4. Add the SHA-1 fingerprint to the Android OAuth client in Google Cloud Console
-
-#### For iOS
-1. Application type: iOS
-2. Bundle ID: `com.sougata143.thundergallery`
-
-#### For Web
-1. Application type: Web application
-2. Name: ThunderGallery Web
-3. Authorized JavaScript origins:
-   - https://auth.expo.io
-   - https://localhost
-4. Authorized redirect URIs:
-   - https://auth.expo.io/@your-expo-username/thundergallery
-   - https://localhost
-
-### Apple Sign-In Setup (iOS only)
-
-1. Configure your Apple Developer account for Sign in with Apple
-2. The app.json already includes the necessary configuration:
-```json
-{
-  "ios": {
-    "usesAppleSignIn": true
-  }
-}
-```
-
-## Development
-
-### Running the App
-
-1. Start the development server:
-```bash
-npx expo start
-```
-
-2. Run on specific platforms:
-```bash
-# iOS
-npx expo run:ios
-
-# Android
-npx expo run:android
-
-# Web
-npx expo start --web
-```
-
-### Testing
-
-```bash
-# Run unit tests
-npm test
-
-# Run e2e tests
-npm run test:e2e
-```
+- Fixed image loading issues in full-screen view
+- Improved error handling and retry mechanisms
+- Added robust permission management
+- Enhanced image loading performance
+- Implemented AI-powered editing features
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -4,10 +4,8 @@ import {
   FlatList,
   TouchableOpacity,
   View,
-  Image,
   RefreshControl,
   ActivityIndicator,
-  Modal,
   Dimensions,
   Alert,
   Linking,
@@ -16,10 +14,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import IconSymbol from '@/components/ui/IconSymbol';
 import ThemedView from '@/components/ThemedView';
 import ThemedText from '@/components/ThemedText';
+import ImageWithLoader from '@/components/ui/ImageWithLoader';
 import { RootState, AppDispatch } from '@/store';
 import { loadLocalPhotos, resetGallery, deletePhotos, clearSelection, togglePhotoSelection } from '@/store/slices/gallerySlice';
 import { Photo } from '@/store/slices/gallerySlice';
-import PhotoEditor from '@/components/PhotoEditor';
+import FullScreenImage from '@/components/FullScreenImage';
 import { mediaLibrary } from '@/services/mediaLibrary';
 
 type ViewMode = 'grid' | 'list' | 'details';
@@ -182,6 +181,20 @@ export default function HomeScreen() {
     }
   };
 
+  const handleCloseFullScreen = () => {
+    setSelectedPhoto(null);
+  };
+
+  const handleRetryFullScreen = () => {
+    if (selectedPhoto) {
+      const updatedPhoto = {
+        ...selectedPhoto,
+        uri: `${selectedPhoto.uri}?timestamp=${Date.now()}`
+      };
+      setSelectedPhoto(updatedPhoto);
+    }
+  };
+
   const renderGridItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
       style={[styles.gridItem, item.selected && styles.selectedItem]}
@@ -189,7 +202,17 @@ export default function HomeScreen() {
       onLongPress={() => handlePhotoLongPress(item)}
       delayLongPress={200}
     >
-      <Image source={{ uri: item.uri }} style={styles.gridImage} />
+      <ImageWithLoader
+        uri={item.uri}
+        thumbnailUri={item.thumbnailUri}
+        style={styles.gridImage}
+        showRetry={true}
+        onRetry={() => {
+          // Force reload the image
+          const updatedPhoto = { ...item, uri: `${item.uri}?timestamp=${Date.now()}` };
+          handlePhotoPress(updatedPhoto);
+        }}
+      />
       {item.selected && (
         <View style={styles.selectionOverlay}>
           <IconSymbol name="checkmark-circle" size={24} color="#fff" />
@@ -205,7 +228,11 @@ export default function HomeScreen() {
       onLongPress={() => handlePhotoLongPress(item)}
       delayLongPress={200}
     >
-      <Image source={{ uri: item.uri }} style={styles.listImage} />
+      <ImageWithLoader
+        uri={item.uri}
+        thumbnailUri={item.thumbnailUri}
+        style={styles.listImage}
+      />
       <View style={styles.listInfo}>
         <ThemedText style={styles.listTitle}>Photo {item.id}</ThemedText>
         <ThemedText style={styles.listDate}>
@@ -227,7 +254,11 @@ export default function HomeScreen() {
       onLongPress={() => handlePhotoLongPress(item)}
       delayLongPress={200}
     >
-      <Image source={{ uri: item.uri }} style={styles.detailsImage} />
+      <ImageWithLoader
+        uri={item.uri}
+        thumbnailUri={item.thumbnailUri}
+        style={styles.detailsImage}
+      />
       <View style={styles.detailsInfo}>
         <ThemedText style={styles.detailsTitle}>Photo {item.id}</ThemedText>
         <ThemedText style={styles.detailsDate}>
@@ -339,18 +370,12 @@ export default function HomeScreen() {
         onEndReachedThreshold={0.5}
       />
 
-      <Modal
+      <FullScreenImage
+        photo={selectedPhoto}
         visible={selectedPhoto !== null}
-        animationType="slide"
-        presentationStyle="fullScreen"
-      >
-        {selectedPhoto && (
-          <PhotoEditor
-            photo={selectedPhoto}
-            onClose={() => setSelectedPhoto(null)}
-          />
-        )}
-      </Modal>
+        onClose={handleCloseFullScreen}
+        onRetry={handleRetryFullScreen}
+      />
     </ThemedView>
   );
 }
