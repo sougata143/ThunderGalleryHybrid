@@ -10,6 +10,7 @@ import { setSelectedPhotos, loadLocalPhotos, addPhoto } from '@/store/slices/gal
 import { Photo } from '../store/slices/gallerySlice';
 import ThemedView from '@/components/ThemedView';
 import { AppDispatch } from '@/store';
+import { useGoogleAuth } from '@/hooks/useGoogleAuth';
 
 export default function GalleryScreen() {
   const dispatch = useDispatch<AppDispatch>();
@@ -18,6 +19,7 @@ export default function GalleryScreen() {
   const loading = useSelector((state: RootState) => state.gallery.loading);
   const [refreshing, setRefreshing] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
+  const { promptAsync } = useGoogleAuth();
 
   useEffect(() => {
     const loadPhotos = async () => {
@@ -36,7 +38,7 @@ export default function GalleryScreen() {
       if (Platform.OS === 'ios') {
         await cloudStorage.signInWithApple();
       } else {
-        await cloudStorage.signInWithGoogle();
+        await cloudStorage.signInWithGoogle(promptAsync);
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -47,10 +49,10 @@ export default function GalleryScreen() {
 
       if (!result.canceled && result.assets?.[0]?.uri) {
         try {
-          const cloudUri = await cloudStorage.uploadPhoto(result.assets[0].uri, 'image/jpeg');
+          const photoMetadata = await cloudStorage.uploadPhoto(result.assets[0].uri);
           const newPhoto: Photo = {
             id: Date.now().toString(),
-            uri: cloudUri,
+            uri: photoMetadata.url,
           };
           dispatch(addPhoto(newPhoto));
         } catch (error) {

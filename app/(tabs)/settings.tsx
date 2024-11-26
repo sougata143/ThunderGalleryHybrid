@@ -9,7 +9,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import IconSymbol from '@/components/ui/IconSymbol';
 import { RootState } from '@/store';
-import auth from '@/services/auth';
+import { authService } from '@/services/auth';
 import ThemedText from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { setDarkMode, setNotificationsEnabled } from '@/store/slices/settingsSlice';
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     try {
-      await auth.signOut();
+      await authService.signOut();
       // Navigation will be handled by auth state change
     } catch (error) {
       Alert.alert('Error', 'Failed to sign out');

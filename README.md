@@ -1,20 +1,58 @@
 # ThunderGallery 
 
-A personal photo gallery app built with React Native and Expo.
+A powerful mobile photo gallery app with AI-powered editing capabilities, built with React Native and Expo.
 
 ## Features
 
-- Google Sign-In
-- Apple Sign-In (iOS only)
+### Authentication
+- Google Sign-In (Android & Web)
+- Apple Sign-In (iOS)
+- Secure token management
 - Guest Mode
-- Photo Management
-- AI-powered Photo Analysis
+
+### Gallery Management
+- Multiple view modes (Grid, List, Details)
+- Pull-to-refresh functionality
+- Smooth transitions and animations
+- Advanced photo organization
+- Cloud storage integration
+
+### Photo Editing
+- Basic editing tools:
+  - Crop
+  - Rotate
+  - Filters
+  - Adjustments
+- AI-powered features:
+  - Object removal
+  - Face detection
+  - Style transfer
+  - Auto-enhance
+  - Background replacement
+  - Smart filters
+
+### User Experience
+- Modern, intuitive interface
+- Dark/Light theme support
+- Responsive design
+- Haptic feedback
+- Gesture controls
+
+## Tech Stack
+
+- React Native / Expo
+- TypeScript
+- Redux Toolkit (State Management)
+- Firebase (Authentication & Storage)
+- TensorFlow.js (AI Features)
+- Expo Router (Navigation)
+- React Native Reanimated (Animations)
 
 ## Setup Instructions
 
 ### Prerequisites
 
-- Node.js
+- Node.js (v16 or later)
 - Expo CLI
 - Java Development Kit (JDK) for Android development
 - Xcode for iOS development
@@ -105,48 +143,41 @@ keytool -list -v -keystore android/app/debug.keystore \
 
 ## Development
 
-Start the development server:
+### Running the App
+
+1. Start the development server:
 ```bash
-npm start
+npx expo start
 ```
 
-### Running on iOS
+2. Run on specific platforms:
 ```bash
-npm run ios
+# iOS
+npx expo run:ios
+
+# Android
+npx expo run:android
+
+# Web
+npx expo start --web
 ```
 
-### Running on Android
+### Testing
+
 ```bash
-npm run android
+# Run unit tests
+npm test
+
+# Run e2e tests
+npm run test:e2e
 ```
-
-## Authentication Flow
-
-The app supports three authentication methods:
-
-1. **Google Sign-In**: Uses `expo-auth-session` for OAuth 2.0 authentication
-2. **Apple Sign-In**: Available only on iOS devices using `expo-apple-authentication`
-3. **Guest Mode**: Allows users to use the app without authentication
-
-User sessions are persisted using `@react-native-async-storage/async-storage`.
-
-## Project Structure
-
-- `/app`: Main application code
-  - `/components`: Reusable React components
-  - `/services`: Service layer (auth, storage, etc.)
-  - `/utils`: Utility functions
-  - `/(tabs)`: Tab-based navigation screens
-- `/assets`: Static assets (images, fonts)
-- `/android`: Android-specific configuration
-- `/ios`: iOS-specific configuration
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
 ## License

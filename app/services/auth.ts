@@ -52,25 +52,38 @@ class AuthService {
       const result = await promptAsync();
       
       if (result?.type === 'success') {
+        // Check if authentication exists before accessing accessToken
+        if (!result.authentication) {
+          throw new Error('Authentication failed: No authentication details received');
+        }
+
         // Get user info using the access token
         const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-          headers: { Authorization: `Bearer ${result.authentication.accessToken}` },
+          headers: {
+            Authorization: `Bearer ${result.authentication.accessToken}`
+          }
         });
+
         const userInfo = await userInfoResponse.json();
-        
-        this.currentUser = {
-          id: userInfo.id,
-          email: userInfo.email,
-          name: userInfo.name,
+
+        // Safely parse user info with type checking
+        const newUser: UserType = {
+          id: typeof userInfo.id === 'string' ? userInfo.id : '',
+          email: typeof userInfo.email === 'string' ? userInfo.email : undefined,
+          name: typeof userInfo.name === 'string' ? userInfo.name : undefined,
           authProvider: 'google'
         };
 
-        await AsyncStorage.setItem('user', JSON.stringify(this.currentUser));
-        return this.currentUser;
+        // Save user to AsyncStorage
+        await AsyncStorage.setItem('user', JSON.stringify(newUser));
+        
+        this.currentUser = newUser;
+        return newUser;
+      } else {
+        throw new Error('Google Sign-In was cancelled or failed');
       }
-      throw new Error('Google sign in was cancelled or failed');
     } catch (error) {
-      logger.error('Google sign in failed', { error });
+      logger.error('Google Sign-In Error', { error });
       throw error;
     }
   }
@@ -90,9 +103,9 @@ class AuthService {
 
       this.currentUser = {
         id: credential.user,
-        email: credential.email || undefined,
-        name: credential.fullName?.givenName 
-          ? `${credential.fullName.givenName} ${credential.fullName.familyName || ''}`
+        email: credential.email && typeof credential.email === 'string' ? credential.email : undefined,
+        name: credential.fullName?.givenName && typeof credential.fullName.givenName === 'string'
+          ? `${credential.fullName.givenName} ${credential.fullName.familyName && typeof credential.fullName.familyName === 'string' ? credential.fullName.familyName : ''}`.trim()
           : undefined,
         authProvider: 'apple'
       };
@@ -110,8 +123,10 @@ class AuthService {
 
   async signInAsGuest(): Promise<UserType> {
     try {
+      const guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       this.currentUser = {
-        id: `guest_${Date.now()}`,
+        id: guestId,
+        name: 'Guest User',
         authProvider: 'guest'
       };
 
@@ -142,4 +157,5 @@ class AuthService {
   }
 }
 
-export const authService = AuthService.getInstance();
+export const authService = new AuthService();
+export default authService;

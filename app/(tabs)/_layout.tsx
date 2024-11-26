@@ -41,9 +41,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Gallery',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name="home" color={color} focused={focused} />
+            <IconSymbol name="images" color={color} focused={focused} />
           ),
           tabBarButton: (props) => <HapticTab {...props} />,
         }}
