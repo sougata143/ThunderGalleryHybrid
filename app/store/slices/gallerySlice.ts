@@ -1,6 +1,6 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import  logger  from '../../utils/logger';
+import logger from '../../utils/logger';
 
 export interface Photo {
   id: string;
@@ -41,6 +41,35 @@ const initialState: GalleryState = {
   error: null,
 };
 
+export const loadLocalPhotos = createAsyncThunk(
+  'gallery/loadLocalPhotos',
+  async (_, { dispatch }) => {
+    try {
+      const [photosString, albumsString] = await Promise.all([
+        AsyncStorage.getItem('photos'),
+        AsyncStorage.getItem('albums'),
+      ]);
+
+      const result: { photos?: { [key: string]: Photo }, albums?: { [key: string]: Album } } = {};
+
+      if (photosString) {
+        result.photos = JSON.parse(photosString);
+      }
+
+      if (albumsString) {
+        result.albums = JSON.parse(albumsString);
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to load photos from AsyncStorage', { 
+        data: { error: error instanceof Error ? error.message : String(error) }
+      });
+      throw error;
+    }
+  }
+);
+
 const gallerySlice = createSlice({
   name: 'gallery',
   initialState,
@@ -51,76 +80,75 @@ const gallerySlice = createSlice({
         data: { count: Object.keys(action.payload).length }
       });
       state.photos = action.payload;
-      AsyncStorage.setItem('gallery_photos', JSON.stringify(action.payload))
-        .then(() => logger.debug('Photos saved to local storage', { tag: 'Gallery' }))
-        .catch(error => logger.error('Failed to save photos to local storage', {
-          tag: 'Gallery',
-          data: { error }
+      // Save to AsyncStorage
+      AsyncStorage.setItem('photos', JSON.stringify(action.payload))
+        .catch(error => logger.error('Failed to save photos to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
+        }));
+    },
+    addPhoto: (state, action: PayloadAction<Photo>) => {
+      logger.debug('Adding new photo', {
+        tag: 'Gallery',
+        data: { photoId: action.payload.id }
+      });
+      state.photos[action.payload.id] = action.payload;
+      // Save to AsyncStorage
+      AsyncStorage.setItem('photos', JSON.stringify(state.photos))
+        .catch(error => logger.error('Failed to save photos to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
         }));
     },
     setAlbums: (state, action: PayloadAction<{ [key: string]: Album }>) => {
-      logger.debug('Setting all albums', {
-        tag: 'Gallery',
-        data: { count: Object.keys(action.payload).length }
-      });
       state.albums = action.payload;
-      AsyncStorage.setItem('gallery_albums', JSON.stringify(action.payload))
-        .then(() => logger.debug('Albums saved to local storage', { tag: 'Gallery' }))
-        .catch(error => logger.error('Failed to save albums to local storage', {
-          tag: 'Gallery',
-          data: { error }
+      AsyncStorage.setItem('albums', JSON.stringify(action.payload))
+        .catch(error => logger.error('Failed to save albums to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
         }));
     },
     addAlbum: (state, action: PayloadAction<Album>) => {
-      logger.debug('Adding new album', {
-        tag: 'Gallery',
-        data: { albumId: action.payload.id, name: action.payload.name }
-      });
       state.albums[action.payload.id] = action.payload;
-      AsyncStorage.setItem('gallery_albums', JSON.stringify(state.albums))
-        .then(() => logger.debug('Albums saved to local storage', { tag: 'Gallery' }))
-        .catch(error => logger.error('Failed to save albums to local storage', {
-          tag: 'Gallery',
-          data: { error }
+      AsyncStorage.setItem('albums', JSON.stringify(state.albums))
+        .catch(error => logger.error('Failed to save albums to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
         }));
     },
     updateAlbum: (state, action: PayloadAction<{ id: string; updates: Partial<Album> }>) => {
-      const { id, updates } = action.payload;
-      if (state.albums[id]) {
-        state.albums[id] = { ...state.albums[id], ...updates };
-        AsyncStorage.setItem('gallery_albums', JSON.stringify(state.albums))
-          .then(() => logger.debug('Albums updated in local storage', { tag: 'Gallery' }))
-          .catch(error => logger.error('Failed to update albums in local storage', {
-            tag: 'Gallery',
-            data: { error }
+      if (state.albums[action.payload.id]) {
+        state.albums[action.payload.id] = {
+          ...state.albums[action.payload.id],
+          ...action.payload.updates,
+        };
+        AsyncStorage.setItem('albums', JSON.stringify(state.albums))
+          .catch(error => logger.error('Failed to save albums to AsyncStorage', { 
+            data: { error: error instanceof Error ? error.message : String(error) }
           }));
       }
     },
     deleteAlbum: (state, action: PayloadAction<string>) => {
-      logger.debug('Deleting album', {
-        tag: 'Gallery',
-        data: { albumId: action.payload }
-      });
       delete state.albums[action.payload];
-      AsyncStorage.setItem('gallery_albums', JSON.stringify(state.albums))
-        .then(() => logger.debug('Albums updated in local storage after deletion', { tag: 'Gallery' }))
-        .catch(error => logger.error('Failed to update albums in local storage after deletion', {
-          tag: 'Gallery',
-          data: { error }
+      AsyncStorage.setItem('albums', JSON.stringify(state.albums))
+        .catch(error => logger.error('Failed to save albums to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
         }));
     },
     updatePhoto: (state, action: PayloadAction<{ id: string; updates: Partial<Photo> }>) => {
-      const { id, updates } = action.payload;
-      if (state.photos[id]) {
-        state.photos[id] = { ...state.photos[id], ...updates };
+      if (state.photos[action.payload.id]) {
+        state.photos[action.payload.id] = {
+          ...state.photos[action.payload.id],
+          ...action.payload.updates,
+        };
+        AsyncStorage.setItem('photos', JSON.stringify(state.photos))
+          .catch(error => logger.error('Failed to save photos to AsyncStorage', { 
+            data: { error: error instanceof Error ? error.message : String(error) }
+          }));
       }
     },
     deletePhoto: (state, action: PayloadAction<string>) => {
       delete state.photos[action.payload];
-      // Remove from all albums
-      Object.values(state.albums).forEach(album => {
-        album.photoIds = album.photoIds.filter(id => id !== action.payload);
-      });
+      AsyncStorage.setItem('photos', JSON.stringify(state.photos))
+        .catch(error => logger.error('Failed to save photos to AsyncStorage', { 
+          data: { error: error instanceof Error ? error.message : String(error) }
+        }));
     },
     setSelectedPhotos: (state, action: PayloadAction<string[]>) => {
       state.selectedPhotos = action.payload;
@@ -132,10 +160,31 @@ const gallerySlice = createSlice({
       state.error = action.payload;
     },
   },
+  extraReducers: (builder) => {
+    builder
+      .addCase(loadLocalPhotos.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(loadLocalPhotos.fulfilled, (state, action) => {
+        state.loading = false;
+        if (action.payload.photos) {
+          state.photos = action.payload.photos;
+        }
+        if (action.payload.albums) {
+          state.albums = action.payload.albums;
+        }
+      })
+      .addCase(loadLocalPhotos.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to load photos';
+      });
+  }
 });
 
 export const {
   setPhotos,
+  addPhoto,
   setAlbums,
   addAlbum,
   updateAlbum,
@@ -146,33 +195,5 @@ export const {
   setLoading,
   setError,
 } = gallerySlice.actions;
-
-// Load photos and albums from local storage on app start
-export const loadLocalPhotos = () => async (dispatch: any) => {
-  try {
-    const [photosJson, albumsJson] = await Promise.all([
-      AsyncStorage.getItem('gallery_photos'),
-      AsyncStorage.getItem('gallery_albums')
-    ]);
-    
-    if (photosJson) {
-      dispatch(setPhotos(JSON.parse(photosJson)));
-    }
-    
-    if (albumsJson) {
-      const albums = JSON.parse(albumsJson);
-      Object.values(albums).forEach((album: unknown) => {
-        if (album && typeof album === 'object') {
-          dispatch(addAlbum(album as Album));
-        }
-      });
-    }
-  } catch (error) {
-    logger.error('Failed to load gallery data from local storage', {
-      tag: 'Gallery',
-      data: { error }
-    });
-  }
-};
 
 export default gallerySlice.reducer;

@@ -3,7 +3,9 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 interface LogData {
   tag?: string;
   errorCode?: string;
+  userId?: string;
   data?: Record<string, unknown>;
+  error?: string;
 }
 
 class Logger {

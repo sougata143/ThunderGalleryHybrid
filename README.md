@@ -1,141 +1,178 @@
-# ThunderGallery 📸
+# ThunderGallery 
 
-ThunderGallery is a powerful, AI-enhanced photo gallery application built with React Native and Expo. It offers advanced features like object removal, face detection, and style transfer, all powered by on-device machine learning.
+A powerful mobile photo gallery app with AI-powered editing capabilities, built with React Native and Expo.
 
-## ✨ Features
+## Features
 
-- 🖼️ **Smart Photo Management**
-  - Organize photos into albums
-  - Advanced search capabilities
-  - Secure cloud storage with Firebase
+### Authentication
+- Google Sign-In (Android & Web)
+- Apple Sign-In (iOS)
+- Secure token management
+- Guest Mode
 
-- 🤖 **AI-Powered Features**
-  - Object removal from photos
-  - Face detection and recognition
-  - Artistic style transfer
-  - On-device ML processing for privacy
+### Gallery Management
+- Multiple view modes (Grid, List, Details)
+- Pull-to-refresh functionality
+- Smooth transitions and animations
+- Advanced photo organization
+- Cloud storage integration
 
-- 🎨 **Modern UI/UX**
-  - Dark/Light theme support
-  - Smooth animations
-  - Intuitive gesture controls
-  - Responsive design
+### Photo Editing
+- Basic editing tools:
+  - Crop
+  - Rotate
+  - Filters
+  - Adjustments
+- AI-powered features:
+  - Object removal
+  - Face detection
+  - Style transfer
+  - Auto-enhance
+  - Background replacement
+  - Smart filters
 
-## 🛠️ Technology Stack
+### User Experience
+- Modern, intuitive interface
+- Dark/Light theme support
+- Responsive design
+- Haptic feedback
+- Gesture controls
 
-- **Frontend Framework**
-  - React Native
-  - Expo (SDK 52)
-  - TypeScript
-  - Redux Toolkit for state management
+## Tech Stack
 
-- **AI/ML**
-  - TensorFlow.js
-  - AWS Rekognition
-  - Custom ML models
+- React Native / Expo
+- TypeScript
+- Redux Toolkit (State Management)
+- Firebase (Authentication & Storage)
+- TensorFlow.js (AI Features)
+- Expo Router (Navigation)
+- React Native Reanimated (Animations)
 
-- **Backend & Storage**
-  - Firebase Authentication
-  - Firebase Cloud Storage
-  - AsyncStorage for local data
-
-- **Development Tools**
-  - Expo Router for navigation
-  - ESLint & Prettier
-  - Jest for testing
-
-## 🚀 Getting Started
+## Setup Instructions
 
 ### Prerequisites
 
-- Node.js (v18 or higher)
-- npm or yarn
+- Node.js (v16 or later)
 - Expo CLI
-- iOS Simulator or Android Emulator (optional)
+- Java Development Kit (JDK) for Android development
+- Xcode for iOS development
 
 ### Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/sougata143/ThunderGalleryHybrid.git
-   cd ThunderGallery
-   ```
+```bash
+git clone https://github.com/yourusername/ThunderGallery.git
+cd ThunderGallery
+```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-3. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Fill in your Firebase and AWS credentials
+3. Create a `.env` file in the root directory with the following variables:
+```plaintext
+# Google Sign-In Configuration
+EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=your-web-client-id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=your-android-client-id.apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-ios-client-id.apps.googleusercontent.com
 
-4. Download ML models:
-   ```bash
-   ./scripts/download_models.sh
-   ```
+# AI Service Keys
+EXPO_PUBLIC_TENSORFLOW_MODEL_URL=your-model-url
+```
 
-5. Start the development server:
-   ```bash
-   npx expo start
-   ```
+### Google OAuth Setup
 
-## 📱 Usage Guide
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a new project or select an existing one
+3. Enable the Google Sign-In API
+4. Configure the OAuth consent screen:
+   - User Type: External
+   - App Name: ThunderGallery
+   - Developer contact information: Your email
+   - Authorized domains: Add `expo.dev`
 
-### Basic Navigation
-- Browse photos in the Gallery tab
-- Organize photos in the Albums tab
-- Access AI features in the AI tab
-- Configure settings in the Settings tab
+5. Create OAuth 2.0 Client IDs:
 
-### AI Features
-1. **Object Removal**
-   - Select a photo
-   - Tap "Remove Object"
-   - Draw around the object
-   - Confirm removal
+#### For Android
+1. Application type: Android
+2. Package name: `com.sougata143.thundergallery`
+3. Generate SHA-1 certificate fingerprint:
+```bash
+# Create android/app directory if it doesn't exist
+mkdir -p android/app
 
-2. **Style Transfer**
-   - Choose a photo
-   - Select an artistic style
-   - Apply and save
+# Generate debug keystore
+keytool -genkeypair -v -storetype PKCS12 \
+  -keystore android/app/debug.keystore \
+  -storepass android -alias androiddebugkey \
+  -keypass android -keyalg RSA -keysize 2048 \
+  -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
 
-3. **Face Detection**
-   - Open any photo
-   - Tap "Detect Faces"
-   - View detected faces
+# Get SHA-1 fingerprint
+keytool -list -v -keystore android/app/debug.keystore \
+  -alias androiddebugkey -storepass android -keypass android
+```
+4. Add the SHA-1 fingerprint to the Android OAuth client in Google Cloud Console
 
-## 🏗️ Building for Production
+#### For iOS
+1. Application type: iOS
+2. Bundle ID: `com.sougata143.thundergallery`
 
-### iOS
-1. Install development certificates:
-   ```bash
-   npx expo prebuild --platform ios
-   ```
+#### For Web
+1. Application type: Web application
+2. Name: ThunderGallery Web
+3. Authorized JavaScript origins:
+   - https://auth.expo.io
+   - https://localhost
+4. Authorized redirect URIs:
+   - https://auth.expo.io/@your-expo-username/thundergallery
+   - https://localhost
 
-2. Build for iOS:
-   ```bash
-   eas build --platform ios
-   ```
+### Apple Sign-In Setup (iOS only)
 
-### Android
-1. Configure Android credentials:
-   ```bash
-   npx expo prebuild --platform android
-   ```
+1. Configure your Apple Developer account for Sign in with Apple
+2. The app.json already includes the necessary configuration:
+```json
+{
+  "ios": {
+    "usesAppleSignIn": true
+  }
+}
+```
 
-2. Build for Android:
-   ```bash
-   eas build --platform android
-   ```
+## Development
 
-### Web
-1. Build for web:
-   ```bash
-   npx expo export:web
-   ```
+### Running the App
 
-## 🤝 Contributing
+1. Start the development server:
+```bash
+npx expo start
+```
+
+2. Run on specific platforms:
+```bash
+# iOS
+npx expo run:ios
+
+# Android
+npx expo run:android
+
+# Web
+npx expo start --web
+```
+
+### Testing
+
+```bash
+# Run unit tests
+npm test
+
+# Run e2e tests
+npm run test:e2e
+```
+
+## Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
@@ -143,16 +180,6 @@ ThunderGallery is a powerful, AI-enhanced photo gallery application built with R
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 👥 Authors
-
-- Sougata Roy - *Initial work* - [sougata143](https://github.com/sougata143)
-
-## 🙏 Acknowledgments
-
-- TensorFlow.js team for the ML models
-- Expo team for the amazing framework
-- Firebase team for the backend services
