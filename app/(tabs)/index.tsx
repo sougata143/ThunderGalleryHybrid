@@ -15,7 +15,7 @@ import IconSymbol from '@/components/ui/IconSymbol';
 import ThemedView from '@/components/ThemedView';
 import ThemedText from '@/components/ThemedText';
 import { RootState, AppDispatch } from '@/store';
-import { loadLocalPhotos } from '@/store/slices/gallerySlice';
+import { loadLocalPhotos, resetGallery, deletePhotos, clearSelection, togglePhotoSelection } from '@/store/slices/gallerySlice';
 import { Photo } from '@/store/slices/gallerySlice';
 import PhotoEditor from '@/components/PhotoEditor';
 
@@ -25,6 +25,8 @@ export default function HomeScreen() {
   const dispatch = useDispatch<AppDispatch>();
   const photos = useSelector((state: RootState) => state.gallery.photos);
   const loading = useSelector((state: RootState) => state.gallery.loading);
+  const hasNextPage = useSelector((state: RootState) => state.gallery.hasNextPage);
+  const selectedPhotos = useSelector((state: RootState) => state.gallery.selectedPhotos);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -43,27 +45,56 @@ export default function HomeScreen() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
+    await dispatch(resetGallery());
     await loadPhotos();
     setRefreshing(false);
+  };
+
+  const handleLoadMore = async () => {
+    if (hasNextPage && !loading) {
+      await loadPhotos();
+    }
   };
 
   const handlePhotoPress = (photo: Photo) => {
     setSelectedPhoto(photo);
   };
 
+  const handlePhotoLongPress = (photo: Photo) => {
+    dispatch(togglePhotoSelection(photo.id));
+  };
+
+  const handleDeleteSelected = async () => {
+    try {
+      await dispatch(deletePhotos(selectedPhotos)).unwrap();
+      dispatch(clearSelection());
+    } catch (error) {
+      console.error('Failed to delete photos:', error);
+    }
+  };
+
   const renderGridItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.gridItem}
+      style={[styles.gridItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.gridImage} />
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
   const renderListItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.listItem}
+      style={[styles.listItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.listImage} />
       <View style={styles.listInfo}>
@@ -72,13 +103,20 @@ export default function HomeScreen() {
           {new Date(parseInt(item.id)).toLocaleDateString()}
         </ThemedText>
       </View>
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
   const renderDetailsItem = ({ item }: { item: Photo }) => (
     <TouchableOpacity
-      style={styles.detailsItem}
+      style={[styles.detailsItem, item.selected && styles.selectedItem]}
       onPress={() => handlePhotoPress(item)}
+      onLongPress={() => handlePhotoLongPress(item)}
+      delayLongPress={200}
     >
       <Image source={{ uri: item.uri }} style={styles.detailsImage} />
       <View style={styles.detailsInfo}>
@@ -90,6 +128,11 @@ export default function HomeScreen() {
           ID: {item.id}
         </ThemedText>
       </View>
+      {item.selected && (
+        <View style={styles.selectionOverlay}>
+          <IconSymbol name="checkmark-circle" size={24} color="#fff" />
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -132,6 +175,14 @@ export default function HomeScreen() {
             <IconSymbol name="information-circle" size={20} />
           </TouchableOpacity>
         </View>
+        {selectedPhotos.length > 0 && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteSelected}
+          >
+            <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -149,6 +200,8 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
       />
 
       <Modal
@@ -196,6 +249,14 @@ const styles = StyleSheet.create({
   },
   activeViewOption: {
     backgroundColor: '#0066ff20',
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#ff0000',
+  },
+  deleteButtonText: {
+    color: '#fff',
   },
   gridItem: {
     flex: 1/3,
@@ -255,5 +316,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.7,
     marginTop: 4,
+  },
+  selectedItem: {
+    opacity: 0.8,
+  },
+  selectionOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 102, 255, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
