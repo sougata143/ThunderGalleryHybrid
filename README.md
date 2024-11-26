@@ -1,50 +1,158 @@
-# Welcome to your Expo app 👋
+# ThunderGallery 📸
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+ThunderGallery is a powerful, AI-enhanced photo gallery application built with React Native and Expo. It offers advanced features like object removal, face detection, and style transfer, all powered by on-device machine learning.
 
-## Get started
+## ✨ Features
 
-1. Install dependencies
+- 🖼️ **Smart Photo Management**
+  - Organize photos into albums
+  - Advanced search capabilities
+  - Secure cloud storage with Firebase
 
+- 🤖 **AI-Powered Features**
+  - Object removal from photos
+  - Face detection and recognition
+  - Artistic style transfer
+  - On-device ML processing for privacy
+
+- 🎨 **Modern UI/UX**
+  - Dark/Light theme support
+  - Smooth animations
+  - Intuitive gesture controls
+  - Responsive design
+
+## 🛠️ Technology Stack
+
+- **Frontend Framework**
+  - React Native
+  - Expo (SDK 52)
+  - TypeScript
+  - Redux Toolkit for state management
+
+- **AI/ML**
+  - TensorFlow.js
+  - AWS Rekognition
+  - Custom ML models
+
+- **Backend & Storage**
+  - Firebase Authentication
+  - Firebase Cloud Storage
+  - AsyncStorage for local data
+
+- **Development Tools**
+  - Expo Router for navigation
+  - ESLint & Prettier
+  - Jest for testing
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- Node.js (v18 or higher)
+- npm or yarn
+- Expo CLI
+- iOS Simulator or Android Emulator (optional)
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/sougata143/ThunderGalleryHybrid.git
+   cd ThunderGallery
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Fill in your Firebase and AWS credentials
 
+4. Download ML models:
    ```bash
-    npx expo start
+   ./scripts/download_models.sh
    ```
 
-In the output, you'll find options to open the app in a
+5. Start the development server:
+   ```bash
+   npx expo start
+   ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## 📱 Usage Guide
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Basic Navigation
+- Browse photos in the Gallery tab
+- Organize photos in the Albums tab
+- Access AI features in the AI tab
+- Configure settings in the Settings tab
 
-## Get a fresh project
+### AI Features
+1. **Object Removal**
+   - Select a photo
+   - Tap "Remove Object"
+   - Draw around the object
+   - Confirm removal
 
-When you're ready, run:
+2. **Style Transfer**
+   - Choose a photo
+   - Select an artistic style
+   - Apply and save
 
-```bash
-npm run reset-project
-```
+3. **Face Detection**
+   - Open any photo
+   - Tap "Detect Faces"
+   - View detected faces
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 🏗️ Building for Production
 
-## Learn more
+### iOS
+1. Install development certificates:
+   ```bash
+   npx expo prebuild --platform ios
+   ```
 
-To learn more about developing your project with Expo, look at the following resources:
+2. Build for iOS:
+   ```bash
+   eas build --platform ios
+   ```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Android
+1. Configure Android credentials:
+   ```bash
+   npx expo prebuild --platform android
+   ```
 
-## Join the community
+2. Build for Android:
+   ```bash
+   eas build --platform android
+   ```
 
-Join our community of developers creating universal apps.
+### Web
+1. Build for web:
+   ```bash
+   npx expo export:web
+   ```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👥 Authors
+
+- Sougata Roy - *Initial work* - [sougata143](https://github.com/sougata143)
+
+## 🙏 Acknowledgments
+
+- TensorFlow.js team for the ML models
+- Expo team for the amazing framework
+- Firebase team for the backend services
