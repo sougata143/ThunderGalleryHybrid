@@ -38,6 +38,41 @@ A powerful mobile photo gallery app with AI-powered editing capabilities, built 
 - Haptic feedback
 - Gesture controls
 
+## Recent Updates
+
+### Media Library Improvements (Latest)
+- Enhanced permission handling system
+  - Robust permission state management
+  - Permission caching with AsyncStorage
+  - Automatic permission retries
+  - User-friendly permission prompts
+- Improved error handling
+  - Detailed error messages
+  - Automatic retry mechanisms
+  - Better user feedback
+- Performance optimizations
+  - Permission state caching
+  - Reduced permission checks
+  - Optimized photo loading
+
+### Known Issues
+- Media library permissions may require app restart on first grant
+- Photo loading may take a moment after permission grant
+- Some Android devices may require manual permission grant
+
+### Troubleshooting
+
+If you encounter permission issues:
+1. Go to your device settings
+2. Find ThunderGallery in the apps list
+3. Grant media library permissions manually
+4. Restart the app
+
+If photos don't load:
+1. Pull down to refresh the gallery
+2. Check your permissions in settings
+3. Try closing and reopening the app
+
 ## Tech Stack
 
 - React Native / Expo

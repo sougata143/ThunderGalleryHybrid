@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Alert,
+  Linking,
 } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import IconSymbol from '@/components/ui/IconSymbol';
@@ -18,6 +20,7 @@ import { RootState, AppDispatch } from '@/store';
 import { loadLocalPhotos, resetGallery, deletePhotos, clearSelection, togglePhotoSelection } from '@/store/slices/gallerySlice';
 import { Photo } from '@/store/slices/gallerySlice';
 import PhotoEditor from '@/components/PhotoEditor';
+import { mediaLibrary } from '@/services/mediaLibrary';
 
 type ViewMode = 'grid' | 'list' | 'details';
 
@@ -27,27 +30,133 @@ export default function HomeScreen() {
   const loading = useSelector((state: RootState) => state.gallery.loading);
   const hasNextPage = useSelector((state: RootState) => state.gallery.hasNextPage);
   const selectedPhotos = useSelector((state: RootState) => state.gallery.selectedPhotos);
+  const error = useSelector((state: RootState) => state.gallery.error);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
   useEffect(() => {
-    loadPhotos();
+    checkPermissions();
   }, []);
 
-  const loadPhotos = async () => {
+  useEffect(() => {
+    if (error) {
+      Alert.alert(
+        'Error',
+        'Failed to load photos. Please check your permissions and try again.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Retry',
+            onPress: () => handleRefresh()
+          }
+        ]
+      );
+    }
+  }, [error]);
+
+  const checkPermissions = async () => {
     try {
-      await dispatch(loadLocalPhotos()).unwrap();
+      console.log('Checking media library permissions...');
+      // Force request on first app launch
+      const granted = await mediaLibrary.requestPermissions(true);
+      console.log('Permission status:', granted);
+      setHasPermission(granted);
+      
+      if (granted) {
+        console.log('Permissions granted, loading photos...');
+        await dispatch(loadLocalPhotos()).unwrap();
+      } else {
+        Alert.alert(
+          'Permission Required',
+          'ThunderGallery needs access to your photos to display them in the app.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Settings',
+              onPress: () => {
+                Linking.openSettings().catch(() => {
+                  Alert.alert('Unable to open settings', 'Please open settings manually to grant photo permissions.');
+                });
+              }
+            }
+          ]
+        );
+      }
     } catch (error) {
-      console.error('Failed to load photos:', error);
+      console.error('Error checking permissions:', error);
+      setHasPermission(false);
+      Alert.alert(
+        'Permission Error',
+        'Failed to request photo library permissions. Please check your settings.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Settings',
+            onPress: () => {
+              Linking.openSettings().catch(() => {
+                Alert.alert('Unable to open settings', 'Please open settings manually to grant photo permissions.');
+              });
+            }
+          }
+        ]
+      );
     }
   };
 
   const handleRefresh = async () => {
-    setRefreshing(true);
-    await dispatch(resetGallery());
-    await loadPhotos();
-    setRefreshing(false);
+    if (!hasPermission) {
+      await checkPermissions();
+      return;
+    }
+
+    try {
+      setRefreshing(true);
+      await dispatch(resetGallery());
+      await dispatch(loadLocalPhotos()).unwrap();
+    } catch (error) {
+      console.error('Error refreshing photos:', error);
+      Alert.alert(
+        'Error',
+        'Failed to refresh photos. Please check your permissions and try again.',
+        [
+          { text: 'OK' },
+          { 
+            text: 'Retry',
+            onPress: () => handleRefresh()
+          }
+        ]
+      );
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const loadPhotos = async () => {
+    if (!hasPermission) {
+      console.log('No permission to load photos');
+      await checkPermissions();
+      return;
+    }
+    
+    try {
+      console.log('Loading photos...');
+      await dispatch(loadLocalPhotos()).unwrap();
+    } catch (error) {
+      console.error('Error loading photos:', error);
+      Alert.alert(
+        'Error',
+        'Failed to load photos. Please check your permissions and try again.',
+        [
+          { text: 'OK' },
+          { 
+            text: 'Retry',
+            onPress: () => loadPhotos()
+          }
+        ]
+      );
+    }
   };
 
   const handleLoadMore = async () => {
@@ -136,6 +245,32 @@ export default function HomeScreen() {
     </TouchableOpacity>
   );
 
+  if (hasPermission === false) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ThemedText style={styles.messageText}>
+          Please grant access to your photo library to use ThunderGallery
+        </ThemedText>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={checkPermissions}
+        >
+          <ThemedText style={styles.buttonText}>
+            Grant Permission
+          </ThemedText>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+
+  if (hasPermission === null) {
+    return (
+      <ThemedView style={styles.centerContainer}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
+
   if (loading) {
     return (
       <ThemedView style={styles.loadingContainer}>
@@ -223,6 +358,28 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  messageText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   loadingContainer: {
     flex: 1,

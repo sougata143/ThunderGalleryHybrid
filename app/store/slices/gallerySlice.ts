@@ -50,12 +50,37 @@ const initialState: GalleryState = {
 
 export const loadLocalPhotos = createAsyncThunk(
   'gallery/loadLocalPhotos',
-  async (_, { getState }) => {
-    const state = getState() as { gallery: GalleryState };
-    const { endCursor } = state.gallery;
-    
-    const result = await mediaLibrary.loadLocalPhotos(endCursor);
-    return result;
+  async (_, { getState, rejectWithValue }) => {
+    try {
+      // Request permissions first
+      const hasPermission = await mediaLibrary.requestPermissions();
+      if (!hasPermission) {
+        return rejectWithValue('Media library permission not granted');
+      }
+
+      // Add a small delay to ensure permission changes are propagated
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const state = getState() as { gallery: GalleryState };
+      const { endCursor } = state.gallery;
+      
+      const result = await mediaLibrary.loadLocalPhotos(endCursor || null);
+      
+      if (!result.assets || result.assets.length === 0) {
+        return {
+          assets: [],
+          hasNextPage: false,
+          endCursor: '',
+        };
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error in loadLocalPhotos thunk:', error);
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to load photos'
+      );
+    }
   }
 );
 
@@ -198,17 +223,33 @@ const gallerySlice = createSlice({
         state.error = null;
       })
       .addCase(loadLocalPhotos.fulfilled, (state, action) => {
-        state.loading = false;
         const { assets, hasNextPage, endCursor } = action.payload;
-        assets.forEach(asset => {
-          state.photos[asset.id] = asset;
-        });
+        
+        const newPhotos = assets.reduce((acc, asset) => {
+          acc[asset.id] = {
+            id: asset.id,
+            uri: asset.uri,
+            thumbnailUri: asset.uri,
+            metadata: {
+              width: asset.width,
+              height: asset.height,
+              createdAt: asset.creationTime,
+            },
+            selected: false,
+          };
+          return acc;
+        }, {} as { [key: string]: Photo });
+
+        state.photos = { ...state.photos, ...newPhotos };
         state.hasNextPage = hasNextPage;
         state.endCursor = endCursor;
+        state.loading = false;
+        state.error = null;
       })
       .addCase(loadLocalPhotos.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Failed to load photos';
+        console.error('Failed to load photos:', action.error);
       })
       .addCase(deletePhotos.fulfilled, (state, action) => {
         const photoIds = action.payload;

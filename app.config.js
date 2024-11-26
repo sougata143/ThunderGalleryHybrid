@@ -5,6 +5,7 @@ module.exports = {
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'automatic',
+  scheme: 'thundergallery',
   splash: {
     image: './assets/splash.png',
     resizeMode: 'contain',
@@ -51,5 +52,9 @@ module.exports = {
     eas: {
       projectId: 'your-project-id'
     }
-  }
+  },
+  experiments: {
+    tsconfigPaths: true
+  },
+  newArchEnabled: true
 };

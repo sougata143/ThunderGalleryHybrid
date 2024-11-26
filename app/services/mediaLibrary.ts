@@ -1,5 +1,8 @@
 import * as MediaLibrary from 'expo-media-library';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const PERMISSION_CACHE_KEY = '@ThunderGallery:mediaPermission';
 
 export interface Asset extends MediaLibrary.Asset {
   selected?: boolean;
@@ -7,8 +10,14 @@ export interface Asset extends MediaLibrary.Asset {
 
 class MediaLibraryService {
   private static instance: MediaLibraryService;
+  private permissionStatus: MediaLibrary.PermissionStatus | null = null;
+  private permissionGranted: boolean = false;
+  private permissionLoaded: boolean = false;
+  private permissionLoadPromise: Promise<void> | null = null;
 
-  private constructor() {}
+  private constructor() {
+    // Permission will be loaded when needed
+  }
 
   public static getInstance(): MediaLibraryService {
     if (!MediaLibraryService.instance) {
@@ -17,49 +26,124 @@ class MediaLibraryService {
     return MediaLibraryService.instance;
   }
 
-  async requestPermissions(): Promise<boolean> {
+  private async loadCachedPermission(): Promise<void> {
     try {
-      const { status: existingStatus } = await MediaLibrary.getPermissionsAsync();
+      const cachedPermission = await AsyncStorage.getItem(PERMISSION_CACHE_KEY);
+      if (cachedPermission) {
+        const { status, granted } = JSON.parse(cachedPermission);
+        this.permissionStatus = status;
+        this.permissionGranted = granted;
+      }
+      this.permissionLoaded = true;
+    } catch (error) {
+      console.error('Error loading cached permission:', error);
+      this.permissionLoaded = true;
+      // Reset permissions on error
+      this.permissionStatus = null;
+      this.permissionGranted = false;
+    }
+  }
+
+  private async cachePermission(status: MediaLibrary.PermissionStatus, granted: boolean): Promise<void> {
+    try {
+      await AsyncStorage.setItem(
+        PERMISSION_CACHE_KEY,
+        JSON.stringify({ status, granted })
+      );
+      this.permissionStatus = status;
+      this.permissionGranted = granted;
+      this.permissionLoaded = true;
+    } catch (error) {
+      console.error('Error caching permission:', error);
+    }
+  }
+
+  private async ensurePermissionLoaded(): Promise<void> {
+    if (this.permissionLoadPromise) {
+      await this.permissionLoadPromise;
+      return;
+    }
+
+    if (!this.permissionLoaded) {
+      this.permissionLoadPromise = this.loadCachedPermission();
+      await this.permissionLoadPromise;
+      this.permissionLoadPromise = null;
+    }
+  }
+
+  async requestPermissions(forceRequest: boolean = false): Promise<boolean> {
+    try {
+      await this.ensurePermissionLoaded();
+
+      // Always check current permission status first
+      const { status: existingStatus, granted } = await MediaLibrary.getPermissionsAsync();
+      console.log('Current permission status:', { status: existingStatus, granted });
       
-      if (existingStatus === 'granted') {
+      // If we have permission and not forcing request, return early
+      if (!forceRequest && granted && existingStatus === 'granted') {
+        await this.cachePermission(existingStatus, true);
         return true;
       }
 
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      return status === 'granted';
+      // Request permission
+      console.log('Requesting media library permission...');
+      const { status, granted: newGranted } = await MediaLibrary.requestPermissionsAsync();
+      console.log('Permission request result:', { status, granted: newGranted });
+
+      const finalGranted = newGranted && status === 'granted';
+      await this.cachePermission(status, finalGranted);
+
+      if (!finalGranted) {
+        throw new Error('Media library permission denied');
+      }
+
+      return finalGranted;
     } catch (error) {
       console.error('Error requesting media library permissions:', error);
-      return false;
+      await this.cachePermission('denied', false);
+      throw error;
     }
   }
 
   async loadLocalPhotos(
-    after?: string,
+    after?: string | null,
     limit: number = 20
   ): Promise<{ assets: Asset[]; hasNextPage: boolean; endCursor: string }> {
     try {
+      // Ensure we have permission
       const hasPermission = await this.requestPermissions();
       if (!hasPermission) {
         throw new Error('Media library permission not granted');
       }
 
-      const { assets, endCursor, hasNextPage } = await MediaLibrary.getAssetsAsync({
+      // Add a small delay to ensure permission changes are propagated
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const options: MediaLibrary.AssetsOptions = {
         first: limit,
-        after,
         mediaType: ['photo'],
         sortBy: [MediaLibrary.SortBy.creationTime],
-      });
+      };
 
-      // Add selected property to each asset
-      const assetsWithSelection = assets.map(asset => ({
-        ...asset,
-        selected: false,
-      }));
+      if (after) {
+        options.after = after;
+      }
+
+      const result = await MediaLibrary.getAssetsAsync(options);
+      
+      if (!result.assets || result.assets.length === 0) {
+        console.log('No photos found in media library');
+        return {
+          assets: [],
+          hasNextPage: false,
+          endCursor: '',
+        };
+      }
 
       return {
-        assets: assetsWithSelection,
-        hasNextPage: hasNextPage || false,
-        endCursor: endCursor || '',
+        assets: result.assets.map(asset => ({ ...asset, selected: false })),
+        hasNextPage: result.hasNextPage,
+        endCursor: result.endCursor,
       };
     } catch (error) {
       console.error('Error loading local photos:', error);
@@ -69,6 +153,11 @@ class MediaLibraryService {
 
   async getAssetInfo(assetId: string): Promise<MediaLibrary.Asset | null> {
     try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Media library permission not granted');
+      }
+
       const asset = await MediaLibrary.getAssetInfoAsync(assetId);
       return asset;
     } catch (error) {
@@ -79,6 +168,11 @@ class MediaLibraryService {
 
   async deleteAssets(assetIds: string[]): Promise<boolean> {
     try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Media library permission not granted');
+      }
+
       await MediaLibrary.deleteAssetsAsync(assetIds);
       return true;
     } catch (error) {
@@ -89,6 +183,11 @@ class MediaLibraryService {
 
   async createAlbum(albumName: string, assetIds: string[]): Promise<MediaLibrary.Album | null> {
     try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Media library permission not granted');
+      }
+
       const album = await MediaLibrary.createAlbumAsync(albumName, assetIds[0], false);
       if (assetIds.length > 1) {
         await MediaLibrary.addAssetsToAlbumAsync(assetIds.slice(1), album.id, false);
@@ -102,6 +201,11 @@ class MediaLibraryService {
 
   async getAlbums(): Promise<MediaLibrary.Album[]> {
     try {
+      const hasPermission = await this.requestPermissions();
+      if (!hasPermission) {
+        throw new Error('Media library permission not granted');
+      }
+
       const albums = await MediaLibrary.getAlbumsAsync();
       return albums;
     } catch (error) {
@@ -111,4 +215,8 @@ class MediaLibraryService {
   }
 }
 
+// Export singleton instance
 export const mediaLibrary = MediaLibraryService.getInstance();
+
+// Add default export to satisfy Expo Router
+export default MediaLibraryService;
