@@ -1,147 +1,163 @@
-import React, { useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  FlatList,
-  Image,
-  Text,
-  TouchableOpacity,
-  Alert,
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, Image, TouchableOpacity, RefreshControl, ActivityIndicator, Platform, Alert } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import IconSymbol from '@/components/ui/IconSymbol';
 import { RootState } from '@/store';
-import { addAlbum } from '@/store/slices/gallerySlice';
-import { v4 as uuidv4 } from 'uuid';
+import { cloudStorage } from '@/services/cloudStorage';
+import { setSelectedPhotos, loadLocalPhotos, addPhoto } from '@/store/slices/gallerySlice';
+import { Photo } from '../store/slices/gallerySlice';
+import ThemedView from '@/components/ThemedView';
+import { AppDispatch } from '@/store';
 
-export default function AlbumsScreen() {
-  const dispatch = useDispatch();
-  const albums = useSelector((state: RootState) => state.gallery.albums);
+export default function GalleryScreen() {
+  const dispatch = useDispatch<AppDispatch>();
   const photos = useSelector((state: RootState) => state.gallery.photos);
+  const selectedPhotos = useSelector((state: RootState) => state.gallery.selectedPhotos);
+  const loading = useSelector((state: RootState) => state.gallery.loading);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
 
-  const createNewAlbum = () => {
-    Alert.prompt(
-      'New Album',
-      'Enter album name:',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Create',
-          onPress: (name?: string) => {
-            if (name) {
-              dispatch(
-                addAlbum({
-                  id: uuidv4(),
-                  name,
-                  photoIds: [],
-                  type: 'manual',
-                  timestamp: Date.now(),
-                })
-              );
-            }
-          },
-        },
-      ],
-      'plain-text'
-    );
+  useEffect(() => {
+    const loadPhotos = async () => {
+      try {
+        await dispatch(loadLocalPhotos()).unwrap();
+      } catch (error) {
+        console.error('Failed to load local photos:', error);
+      }
+    };
+    loadPhotos();
+  }, [dispatch]);
+
+  const pickImage = async () => {
+    try {
+      // Check if user is signed in to a cloud service
+      if (Platform.OS === 'ios') {
+        await cloudStorage.signInWithApple();
+      } else {
+        await cloudStorage.signInWithGoogle();
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        try {
+          const cloudUri = await cloudStorage.uploadPhoto(result.assets[0].uri, 'image/jpeg');
+          const newPhoto: Photo = {
+            id: Date.now().toString(),
+            uri: cloudUri,
+          };
+          dispatch(addPhoto(newPhoto));
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          Alert.alert('Error', 'Failed to upload photo to cloud storage');
+        }
+      }
+    } catch (error) {
+      console.error('Error picking or uploading image:', error);
+      Alert.alert('Error', 'Please make sure you are signed in to your cloud storage account');
+    }
   };
 
-  const renderAlbum = ({ item: albumId }: { item: string }) => {
-    const album = albums[albumId];
-    const coverPhotoId = album.photoIds[0];
-    const coverPhoto = coverPhotoId ? photos[coverPhotoId] : null;
+  const handlePhotoPress = (photoId: string) => {
+    if (selectionMode) {
+      const newSelection = selectedPhotos.includes(photoId)
+        ? selectedPhotos.filter(id => id !== photoId)
+        : [...selectedPhotos, photoId];
+      
+      dispatch(setSelectedPhotos(newSelection));
+    } else {
+      // Navigate to photo details or perform single tap action
+      router.push(`/photo/${photoId}`);
+    }
+  };
 
+  const handleLongPress = (photoId: string) => {
+    setSelectionMode(true);
+    dispatch(setSelectedPhotos([photoId]));
+  };
+
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await dispatch(loadLocalPhotos()).unwrap();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [dispatch]);
+
+  if (loading) {
     return (
-      <TouchableOpacity
-        style={styles.albumContainer}
-        onPress={() => router.push(`/album/${albumId}`)}
-      >
-        <View style={styles.albumCover}>
-          {coverPhoto ? (
-            <Image source={{ uri: coverPhoto.uri }} style={styles.albumCoverImage} />
-          ) : (
-            <View style={styles.emptyAlbumCover}>
-              <IconSymbol name="photo" size={40} color="#999" />
-            </View>
-          )}
-        </View>
-        <View style={styles.albumInfo}>
-          <Text style={styles.albumName}>{album.name}</Text>
-          <Text style={styles.photoCount}>
-            {album.photoIds.length} {album.photoIds.length === 1 ? 'photo' : 'photos'}
-          </Text>
-        </View>
-      </TouchableOpacity>
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </ThemedView>
     );
-  };
+  }
+
+  const photoArray = Object.values(photos).filter((photo): photo is Photo => 
+    typeof photo === 'object' && 
+    photo !== null && 
+    'id' in photo && 
+    'uri' in photo
+  );
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={styles.container}>
       <FlatList
-        data={Object.keys(albums)}
-        renderItem={renderAlbum}
-        keyExtractor={(item) => item}
-        contentContainerStyle={styles.listContent}
+        data={photoArray}
+        numColumns={3}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            onPress={() => handlePhotoPress(item.id)}
+            onLongPress={() => handleLongPress(item.id)}
+            style={[
+              styles.photoContainer,
+              selectedPhotos.includes(item.id) && styles.selectedPhoto,
+            ]}
+          >
+            <Image source={{ uri: item.uri }} style={styles.photo} />
+          </TouchableOpacity>
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       />
-      <TouchableOpacity style={styles.fab} onPress={createNewAlbum}>
-        <IconSymbol name="plus" size={24} color="white" />
+      <TouchableOpacity style={styles.fab} onPress={pickImage}>
+        <IconSymbol name="add" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-    </View>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
-  listContent: {
-    padding: 16,
-  },
-  albumContainer: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  albumCover: {
-    width: 80,
-    height: 80,
-  },
-  albumCoverImage: {
-    width: '100%',
-    height: '100%',
-  },
-  emptyAlbumCover: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#f0f0f0',
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  albumInfo: {
+  photoContainer: {
     flex: 1,
-    padding: 12,
-    justifyContent: 'center',
+    margin: 1,
+    aspectRatio: 1,
   },
-  albumName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+  photo: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
-  photoCount: {
-    fontSize: 14,
-    color: '#666',
+  selectedPhoto: {
+    opacity: 0.7,
+    borderWidth: 2,
+    borderColor: '#007AFF',
   },
   fab: {
     position: 'absolute',

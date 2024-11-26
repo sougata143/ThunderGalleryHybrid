@@ -43,17 +43,17 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name="home-outline" color={color} focused={focused} />
+            <IconSymbol name="home" color={color} focused={focused} />
           ),
           tabBarButton: (props) => <HapticTab {...props} />,
         }}
       />
       <Tabs.Screen
-        name="gallery"
+        name="albums"
         options={{
-          title: 'Gallery',
+          title: 'Albums',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name="images-outline" color={color} focused={focused} />
+            <IconSymbol name="albums" color={color} focused={focused} />
           ),
           tabBarButton: (props) => <HapticTab {...props} />,
         }}
@@ -63,7 +63,7 @@ export default function TabLayout() {
         options={{
           title: 'AI Tools',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name="flash-outline" color={color} focused={focused} />
+            <IconSymbol name="flash" color={color} focused={focused} />
           ),
           tabBarButton: (props) => <HapticTab {...props} />,
         }}
@@ -73,7 +73,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, focused }) => (
-            <IconSymbol name="settings-outline" color={color} focused={focused} />
+            <IconSymbol name="settings" color={color} focused={focused} />
           ),
           tabBarButton: (props) => <HapticTab {...props} />,
         }}

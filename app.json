@@ -1,13 +1,14 @@
 {
   "expo": {
     "name": "ThunderGallery",
-    "slug": "ThunderGallery",
+    "slug": "thundergallery",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon.png",
+    "scheme": "thundergallery",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,25 +17,32 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.thundergallery.app"
+      "bundleIdentifier": "com.sougata143.thundergallery",
+      "usesAppleSignIn": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.thundergallery.app"
+      "package": "com.sougata143.thundergallery"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    },
-    "experiments": {
-      "tsconfigPaths": true
+      "favicon": "./assets/images/favicon.png",
+      "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-apple-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ThunderGallery to access your photos"
+        }
+      ]
     ],
-    "scheme": "thundergallery",
-    "newArchEnabled": true
+    "experiments": {
+      "tsconfigPaths": true
+    }
   }
 }
